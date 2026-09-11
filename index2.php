@@ -6,7 +6,7 @@ session_start([
 ]);
 
 // Control de acceso: Si no hay sesión iniciada o el rol NO es admin, redirigir al login
-if (!isset($_SESSION['usuario_rol']) \vert{}\vert{}$_SESSION['usuario_rol'] !== 'admin') {
+if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
     header('Location: views/login.php?error=acceso_denegado');
     exit;
 }
