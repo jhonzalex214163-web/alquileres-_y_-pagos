@@ -1,0 +1,330 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    /* Regla 60-30-10 Ecológica */
+    --bg-60: #091a13;         /* 60% Verde Bosque Oscuro */
+    --card-60: #12281e;       /* Verde Follaje Profundo */
+    --card-border: #1d3b2e;
+    --text-30: #ecfdf5;       /* 30% Menta Suave / Blanco Ecológico */
+    --muted-30: #86efac;      /* Verde Salvia para textos secundarios */
+    --accent-10: #22c55e;     /* 10% Verde Hoja Vivo (Acciones clave) */
+    --accent-glow: #4ade80;
+    --accent-amber: #f59e0b;
+    --accent-danger: #f43f5e;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+body {
+    background-color: var(--bg-60);
+    background-image: radial-gradient(circle at 50% 0%, #153a2a 0%, var(--bg-60) 75%);
+    color: var(--text-30);
+    min-height: 100vh;
+    padding-bottom: 40px;
+}
+
+/* Header & Navegación */
+header {
+    background-color: rgba(18, 40, 30, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--card-border);
+    padding: 16px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand-icon {
+    font-size: 24px;
+    background: rgba(34, 197, 94, 0.15);
+    padding: 8px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+}
+
+.nav-tabs {
+    display: flex;
+    background-color: var(--bg-60);
+    padding: 5px;
+    border-radius: 12px;
+    gap: 6px;
+    border: 1px solid var(--card-border);
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted-30);
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tab-btn.active {
+    background-color: var(--accent-10);
+    color: #052e16;
+    font-weight: 800;
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+}
+
+/* Layout y Tarjetas */
+main {
+    max-width: 1100px;
+    margin: 30px auto 0;
+    padding: 0 20px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.card {
+    background-color: var(--card-60);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+/* Elementos Visuales Ecológicos */
+.text-accent { color: var(--accent-glow); }
+.text-muted { color: var(--muted-30); opacity: 0.8; }
+.text-warning { color: var(--accent-amber); }
+.text-danger { color: var(--accent-danger); }
+
+.badge-success {
+    background: rgba(34, 197, 94, 0.2);
+    color: var(--accent-glow);
+    border: 1px solid rgba(74, 222, 128, 0.4);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-block;
+}
+
+/* Barra de Progreso Verde Hoja */
+.progress-bg {
+    background-color: var(--bg-60);
+    height: 14px;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 14px 0;
+    border: 1px solid var(--card-border);
+}
+
+.progress-fill {
+    background: linear-gradient(90deg, #16a34a 0%, #4ade80 100%);
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
+/* Tablas */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th, td {
+    padding: 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--card-border);
+    font-size: 14px;
+}
+
+th {
+    color: var(--muted-30);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background-color: rgba(9, 26, 19, 0.6);
+}
+
+/* Select */
+select {
+    background-color: var(--bg-60);
+    color: var(--text-30);
+    border: 1px solid var(--card-border);
+    padding: 8px 14px;
+    border-radius: 10px;
+    outline: none;
+    cursor: pointer;
+}
+
+/* Modo oscuro para el mapa */
+.leaflet-tile-pane {
+    filter: brightness(0.7) invert(1) contrast(1.2) hue-rotate(100deg);
+}
+
+.tab-btn:focus, 
+.tab-btn:active {
+    outline: none;
+    border: none;
+}
+
+/* MODO DÍA */
+body.day-mode {
+    --bg-60: #f0fdf4;
+    --card-60: #dcfce7;
+    --card-border: #bbf7d0;
+    --text-30: #166534;
+    --muted-30: #4d7c0f;
+    --accent-10: #16a34a;
+    --accent-glow: #16a34a;
+    --accent-amber: #ea580c;
+    --accent-danger: #dc2626;
+}
+
+body.day-mode .leaflet-tile-pane {
+    filter: none;
+}
+
+body.day-mode header {
+    background-color: rgba(255, 255, 255, 0.85);
+}
+
+body.day-mode .card {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+body.day-mode th {
+    background-color: rgba(236, 252, 203, 0.6);
+}
+
+/* Botón Toggle */
+.theme-toggle {
+    background: var(--bg-60);
+    border: 1px solid var(--card-border);
+    color: var(--text-30);
+    width: 44px;
+    height: 26px;
+    border-radius: 13px;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 2px;
+}
+
+.theme-toggle.active {
+    background: var(--accent-10);
+    justify-content: flex-end;
+}
+
+.theme-toggle .moon,
+.theme-toggle .sun {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.theme-toggle.active .moon {
+    opacity: 0;
+    transform: scale(0.5);
+}
+
+.theme-toggle.active .sun {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.theme-toggle .sun {
+    opacity: 0;
+    transform: scale(0.5);
+}
+
+.theme-toggle:hover {
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+}
+
+body.day-mode .theme-toggle:hover {
+    box-shadow: 0 0 15px rgba(22, 153, 74, 0.4);
+}
+
+/* Asegura que el contenedor del mapa tenga altura visible */
+#map, #mapa, .map-container {
+  width: 100%;
+  height: 400px;
+  min-height: 350px;
+  border-radius: 8px;
+}
+
+/* Asegura que el mapa se visualice correctamente y no colapse */
+#map {
+    width: 100% !important;
+    height: 320px !important;
+    min-height: 300px;
+    display: block;
+    border-radius: 14px;
+    z-index: 1;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.nav-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.nav-btn {
+    background-color: #1a2e26;
+    color: #a3e635;
+    border: 1px solid #2d5a44;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-btn:hover {
+    background-color: #224436;
+}
+
+.nav-btn.active {
+    background-color: #22c55e;
+    color: #051c14;
+    font-weight: bold;
+    border-color: #22c55e;
+}
+
+.view-section {
+    width: 100%;
+    margin-top: 20px;
+}
