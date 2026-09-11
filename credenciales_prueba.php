@@ -148,12 +148,12 @@ try {
             </p>
             <?php if (isset($mensajeExito)): ?>
                 <p style="color: var(--accent-glow); font-size: 13px; margin-top: 12px; font-weight: 600;">
-                    ✓ <?php echo $mensajeExito; ?>
+                    ✓ <?php echo htmlspecialchars($mensajeExito, ENT_QUOTES, 'UTF-8'); ?>
                 </p>
             <?php endif; ?>
             <?php if (isset($error)): ?>
                 <p style="color: var(--accent-danger); font-size: 13px; margin-top: 12px; font-weight: 600;">
-                    ✗ <?php echo $error; ?>
+                    ✗ <?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?>
                 </p>
             <?php endif; ?>
         </div>

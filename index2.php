@@ -1,12 +1,17 @@
 <?php
-session_start();
+// Configuración de sesión protegida
+session_start([
+    'cookie_httponly' => true,
+    'cookie_samesite' => 'Strict'
+]);
 
 // Control de acceso: Si no hay sesión iniciada o el rol NO es admin, redirigir al login
-if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
+if (!isset($_SESSION['usuario_rol']) \vert{}\vert{}$_SESSION['usuario_rol'] !== 'admin') {
     header('Location: views/login.php?error=acceso_denegado');
     exit;
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -328,3 +333,4 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
     </script>
 </body>
 </html>
+
