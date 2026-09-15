@@ -2,8 +2,13 @@
 /**
  * ============================================================
  * Archivo: credenciales_prueba.php
- * Propósito: Crear tablas e insertar usuarios de prueba en MariaDB
+ * Propósito: Crear usuarios de prueba en la BD sin sobrescribir
+ *            filas ni roles existentes (ver Aud: B9).
  * Uso:       http://localhost/bicicletas-compartidas/credenciales_prueba.php
+ * ============================================================
+ * NO inserta con id fijo (evita pisar Carlos Gómez/María Rodríguez).
+ * NO crea ni renombra roles (los roles reales son ADMIN/OPER/MANT/CLI/SUP).
+ * Para el esquema completo usar las migraciones 004-007.
  * ============================================================
  */
 
@@ -13,79 +18,34 @@ require_once __DIR__ . '/config/database.php';
 try {
     $pdo = Database::getConnection();
 
-    // --- 1. Crear tabla roles si no existe ---
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS roles (
-            id_rol INT AUTO_INCREMENT PRIMARY KEY,
-            codigo_rol VARCHAR(50) UNIQUE NOT NULL,
-            nombre_rol VARCHAR(100) NOT NULL,
-            permisos LONGTEXT,
-            nivel_acceso INT NOT NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ");
-
-    // --- 2. Crear roles de prueba ---
-    $roles = [
-        ['admin', 'Administrador', '["usuarios","roles","bicicletas","estaciones","conciliacion","auditoria","reportes"]', 10],
-        ['user',  'Usuario',       '["fidelizacion","estaciones","mis_alquileres"]',                         1],
-    ];
-
-    foreach ($roles as $r) {
-        $stmt = $pdo->prepare("
-            INSERT INTO roles (codigo_rol, nombre_rol, permisos, nivel_acceso)
-            VALUES (?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                nombre_rol = VALUES(nombre_rol),
-                permisos   = VALUES(permisos),
-                nivel_acceso = VALUES(nivel_acceso)
-        ");
-        $stmt->execute($r);
-    }
-
-    // --- 3. Crear tabla usuarios si no existe ---
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id_usuario INT AUTO_INCREMENT PRIMARY KEY,
-            nombre VARCHAR(100) NOT NULL,
-            apellido VARCHAR(100) NOT NULL,
-            email VARCHAR(150) UNIQUE NOT NULL,
-            telefono VARCHAR(20),
-            id_rol INT,
-            password VARCHAR(255) NOT NULL,
-            fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (id_rol) REFERENCES roles(id_rol) ON DELETE SET NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ");
-
-    // --- 4. Obtener IDs reales de roles ---
-    $rolAdmin = $pdo->query("SELECT id_rol FROM roles WHERE codigo_rol = 'admin'")->fetchColumn();
-    $rolUser  = $pdo->query("SELECT id_rol FROM roles WHERE codigo_rol = 'user'")->fetchColumn();
-
-    // --- 5. Insertar o actualizar usuarios ---
+    // Contraseña de prueba (texto plano NO se almacena, solo el hash)
     $clavePlano = 'password123';
     $passwordHash = password_hash($clavePlano, PASSWORD_BCRYPT);
 
     $usuarios = [
-        [1, 'Andrés', 'López', 'admin@bicijardin.com', '312-456-7890', $rolAdmin, $passwordHash],
-        [2, 'Maria',  'Gómez', 'user@bicijardin.com',  '315-789-0123', $rolUser,  $passwordHash],
+        ['Andrés', 'López', 'admin@bicijardin.com', '312-456-7890', 'ADMIN'],
+        ['María',  'Gómez', 'user@bicijardin.com',  '315-789-0123', 'CLI'],
     ];
 
     foreach ($usuarios as $u) {
+        // rol por código, sin tocar el resto de filas de la tabla roles
+        $idRol = $pdo->prepare("SELECT id_rol FROM roles WHERE codigo_rol = ?");
+        $idRol->execute([$u[4]]);
+        $rol = $idRol->fetchColumn();
+
+        if ($rol === false) {
+            throw new Exception("No existe el rol '" . $u[4] . "' en la BD. Ejecuta las migraciones 004-007.");
+        }
+
         $stmt = $pdo->prepare("
-            INSERT INTO usuarios (id_usuario, nombre, apellido, email, telefono, id_rol, password)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                nombre = VALUES(nombre),
-                apellido = VALUES(apellido),
-                email = VALUES(email),
-                telefono = VALUES(telefono),
-                id_rol = VALUES(id_rol),
-                password = VALUES(password)
+            INSERT INTO usuarios (nombre, apellido, email, telefono, id_rol, password)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE password = VALUES(password)
         ");
-        $stmt->execute($u);
+        $stmt->execute([$u[0], $u[1], $u[2], $u[3], $rol, $passwordHash]);
     }
 
-    $mensajeExito = "Base de datos y usuarios sincronizados correctamente.";
+    $mensajeExito = "Usuarios de prueba sincronizados (solo se actualiza la contraseña, nunca los datos reales).";
 } catch (Exception $e) {
     $error = "Error de Base de Datos: " . $e->getMessage();
 }
@@ -129,11 +89,11 @@ try {
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--card-border); font-size: 14px; }
         th { color: var(--muted-30); font-weight: 700; text-transform: uppercase; font-size: 11px; }
-        
+
         .badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 12px; }
         .badge-admin { background: rgba(34, 197, 94, 0.2); color: var(--accent-glow); }
         .badge-user { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-        
+
         code { background: var(--bg-60); padding: 4px 8px; border-radius: 4px; color: var(--accent-glow); font-family: monospace; }
         a { color: var(--accent-glow); text-decoration: none; font-weight: bold; }
         a:hover { text-decoration: underline; }
@@ -144,7 +104,7 @@ try {
         <div class="card">
             <h1 style="font-size: 22px; margin: 0 0 8px 0;">🚲 Credenciales de Prueba - BiciJardín</h1>
             <p style="color: var(--muted-30); font-size: 13px; margin: 0;">
-                Base de datos MariaDB: <code>bicicletas_compartidas</code>
+                Base de datos MySQL: <code>bicicletas_compartidas</code>
             </p>
             <?php if (isset($mensajeExito)): ?>
                 <p style="color: var(--accent-glow); font-size: 13px; margin-top: 12px; font-weight: 600;">
@@ -166,7 +126,6 @@ try {
                         <th>Nombre</th>
                         <th>Correo Electrónico</th>
                         <th>Contraseña</th>
-                        <th>Nivel</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -175,14 +134,12 @@ try {
                         <td>Andrés López</td>
                         <td>admin@bicijardin.com</td>
                         <td><code>password123</code></td>
-                        <td style="color: var(--accent-danger); font-weight: 700;">10</td>
                     </tr>
                     <tr>
                         <td><span class="badge badge-user">🚴 Usuario</span></td>
-                        <td>Maria Gómez</td>
+                        <td>María Gómez</td>
                         <td>user@bicijardin.com</td>
                         <td><code>password123</code></td>
-                        <td style="color: var(--accent-glow); font-weight: 700;">1</td>
                     </tr>
                 </tbody>
             </table>
@@ -190,7 +147,7 @@ try {
 
         <div class="card" style="text-align: center;">
             <p style="color: var(--muted-30); font-size: 13px; margin: 0;">
-                Ir al <a href="views/login.php">Formulario de Iniciar Sesión</a>
+                Ir al <a href="index.php?action=login">Formulario de Iniciar Sesión</a>
             </p>
         </div>
     </div>

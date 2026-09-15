@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>BiciJardín - Viaje en Curso</title>
+    <meta name="base-url" content="../controllers/">
     <link rel="stylesheet" href="../css/styles.css">
 </head>
 <body>

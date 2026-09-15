@@ -1,4 +1,10 @@
 -- ============================================================
+-- ⚠️ OBSOLETA — NO EJECUTAR (Auditoría B9)
+-- Sobrescribe los usuarios reales (id 1 y 2) y RENOMBRA los roles
+-- ADMIN/OPER de la BD viva. Sustituida por 004_auth_usuarios.sql
+-- (inserta usuarios como filas nuevas sin tocar id 1-2 ni roles).
+-- ============================================================
+-- ============================================================
 -- Migración: bicicletas_compartidas - Agregar autenticación
 -- ============================================================
 -- Basado en database/script.sql

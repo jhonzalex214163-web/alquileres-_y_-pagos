@@ -1,13 +1,10 @@
 <?php
-// Configuración de sesión protegida
-session_start([
-    'cookie_httponly' => true,
-    'cookie_samesite' => 'Strict'
-]);
+require_once __DIR__ . '/config/config.php';
+require_once __DIR__ . '/controllers/AuthController.php';
 
 // Control de acceso: Si no hay sesión iniciada o el rol NO es admin, redirigir al login
-if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
-    header('Location: views/login.php?error=acceso_denegado');
+if (!AuthController::isAuthenticated() || ($_SESSION['usuario_rol'] ?? null) !== 'admin') {
+    header('Location: ' . BASE_URL . '?action=login');
     exit;
 }
 ?>
@@ -18,6 +15,8 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BiciJardín - Panel Administrador</title>
+    <meta name="csrf-token" content="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
+    <meta name="base-url" content="controllers/">
     <link rel="stylesheet" href="css/styles.css">
     <!-- Leaflet CSS y JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -39,7 +38,6 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
             <button onclick="switchTab('view-fidelizacion')" id="tab-fidelizacion" class="tab-btn active">Portal Fidelización</button>
             <button onclick="switchTab('view-auditoria')" id="tab-auditoria" class="tab-btn">Auditoría SQL</button>
             <button onclick="switchTab('view-monitoreo')" id="tab-monitoreo" class="tab-btn">Monitoreo en Tiempo Real</button>
-            <button onclick="switchTab('view-gestion-viajes')" id="tab-gestion-viajes" class="tab-btn">Gestión de Viajes</button>
             <button onclick="switchTab('view-metodos-pago')" id="tab-metodos-pago" class="tab-btn">Métodos de Pago</button>
         </div>
 
@@ -47,7 +45,7 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
             <span class="text-muted" style="font-size: 12px; font-weight: 600;">
                 👑 <?php echo htmlspecialchars($_SESSION['usuario_nombre'] ?? 'Administrador'); ?>
             </span>
-            <a href="views/login.php" style="color: #f43f5e; text-decoration: none; font-size: 13px; font-weight: bold;">Cerrar Sesión</a>
+            <a href="<?php echo BASE_URL; ?>index.php?action=logout" style="color: #f43f5e; text-decoration: none; font-size: 13px; font-weight: bold;">Cerrar Sesión</a>
             <button id="theme-toggle" class="theme-toggle" onclick="toggleDayNight()">
                 <span class="moon">🌙</span>
                 <span class="sun">☀️</span>
@@ -66,8 +64,7 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
                 <div>
                     <label class="text-muted" style="font-size: 12px;">Usuario: </label>
                     <select id="user-select" onchange="cargarDatosUsuario(this.value)">
-                        <option value="1">Andrés López (Eco-Líder 10%)</option>
-                        <option value="2">Maria Gomez (En Progreso)</option>
+                        <option value="">Cargando usuarios…</option>
                     </select>
                 </div>
             </div>
@@ -106,10 +103,27 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
                 <p id="progress-desc" class="text-muted" style="font-size: 12px;">¡Excelente compromiso verde! Has completado más de 20 días de viaje limpio este mes.</p>
             </div>
 
-            <!-- Mapa -->
+            <!-- Ranking de Clientes Frecuentes del Mes -->
             <div class="card">
-                <h3 style="font-size: 16px; margin-bottom: 12px;">Estaciones de Carga y Retiro en Jardín</h3>
-                <div id="map" style="height: 320px; width: 100%; border-radius: 14px; border: 1px solid var(--card-border);"></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="font-size: 16px; margin: 0;">🏆 Clientes con Más Alquileres del Mes</h3>
+                    <span class="text-muted" style="font-size: 11px;">vw_clientes_frecuentes</span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Cliente</th>
+                            <th>Email</th>
+                            <th>Días / Alquileres</th>
+                            <th>Descuento</th>
+                            <th>Estado Fidelidad</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-frecuentes">
+                        <!-- Cargado por JS desde la BD -->
+                    </tbody>
+                </table>
             </div>
         </section>
 
@@ -123,18 +137,18 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
             <div class="grid-3" style="margin-bottom: 20px;">
                 <div class="card" style="margin: 0;">
                     <span class="text-muted" style="font-size: 12px;">Total Recaudado Conciliado</span>
-                    <div class="text-accent" style="font-size: 26px; font-weight: 900; margin-top: 4px;">$1,450.00</div>
-                    <span class="text-muted" style="font-size: 10px;">vw_conciliacion_financiera</span>
+                    <div id="conciliado-total" class="text-accent" style="font-size: 26px; font-weight: 900; margin-top: 4px;">$—</div>
+                    <span id="conciliado-sub" class="text-muted" style="font-size: 10px;">vw_conciliacion_financiera</span>
                 </div>
                 <div class="card" style="margin: 0;">
                     <span class="text-muted" style="font-size: 12px;">Descuadres / Parciales</span>
-                    <div class="text-warning" style="font-size: 26px; font-weight: 900; margin-top: 4px;">$85.00</div>
-                    <span class="text-muted" style="font-size: 10px;">1 registro pendiente</span>
+                    <div id="descuadres-monto" class="text-warning" style="font-size: 26px; font-weight: 900; margin-top: 4px;">$—</div>
+                    <span id="descuadres-sub" class="text-muted" style="font-size: 10px;">—</span>
                 </div>
                 <div class="card" style="margin: 0;">
                     <span class="text-muted" style="font-size: 12px;">Transacciones Huérfanas</span>
-                    <div class="text-danger" style="font-size: 26px; font-weight: 900; margin-top: 4px;">1 Alerta</div>
-                    <span class="text-muted" style="font-size: 10px;">vw_transacciones_huerfanas</span>
+                    <div id="huerfanas-num" class="text-danger" style="font-size: 26px; font-weight: 900; margin-top: 4px;">—</div>
+                    <span id="huerfanas-sub" class="text-muted" style="font-size: 10px;">vw_transacciones_huerfanas</span>
                 </div>
             </div>
 
@@ -162,55 +176,44 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
             <div style="margin-bottom: 20px;">
                 <span class="text-accent" style="font-size: 12px; font-weight: 700; text-transform: uppercase;">Telemetría Activa</span>
                 <h2 style="font-size: 22px; font-weight: 800;">Monitoreo en Tiempo Real e Interfaz de Seguimiento</h2>
+                <p id="monitoreo-quien" class="text-muted" style="font-size: 12px; margin-bottom: 14px;">—</p>
             </div>
 
             <div class="grid-3" style="margin-bottom: 20px;">
                 <div class="card" style="margin: 0;">
                     <span class="text-muted" style="font-size: 12px;">Batería Actual</span>
-                    <div id="bateria-nivel" class="text-accent" style="font-size: 28px; font-weight: 900; margin-top: 4px;">85%</div>
+                    <div id="bateria-nivel" class="text-accent" style="font-size: 28px; font-weight: 900; margin-top: 4px;">—</div>
+                    <span id="bateria-detalle" class="text-muted" style="font-size: 11px;">Adquirida vs Actual</span>
                 </div>
                 <div class="card" style="margin: 0;">
-                    <span class="text-muted" style="font-size: 12px;">Estado del Vehículo</span>
-                    <div id="estado-bici" style="font-size: 22px; font-weight: 800; margin-top: 4px; color: #22c55e;">En Ruta</div>
+                    <span class="text-muted" style="font-size: 12px;">Estado de Bicicleta</span>
+                    <div id="estado-bici" style="font-size: 22px; font-weight: 800; margin-top: 4px; color: #22c55e;">—</div>
+                    <span id="estado-detalle" class="text-muted" style="font-size: 11px;">Adquirido vs Actual</span>
                 </div>
                 <div class="card" style="margin: 0;">
                     <span class="text-muted" style="font-size: 12px;">Alerta de Mantenimiento</span>
-                    <div id="alerta-box" class="text-accent" style="font-size: 18px; font-weight: 700; margin-top: 4px;">Normal (Sin Alertas)</div>
+                    <div id="alerta-box" class="text-accent" style="font-size: 18px; font-weight: 700; margin-top: 4px;">—</div>
+                    <span id="alerta-detalle" class="text-muted" style="font-size: 11px;">Al adquirir vs Actual</span>
                 </div>
+            </div>
+
+            <!-- Mapa: Estaciones de Carga y Retiro -->
+            <div class="card">
+                <h3 style="font-size: 16px; margin-bottom: 12px;">Estaciones de Carga y Retiro en Jardín</h3>
+                <div id="map" style="height: 320px; width: 100%; border-radius: 14px; border: 1px solid var(--card-border);"></div>
+            </div>
+
+            <div class="card">
+                <h3 style="font-size: 16px; margin-bottom: 12px;">Rutas por Usuario</h3>
+                <button type="button" class="btn-secondary" onclick="togglePanelUsuariosMonitoreo()">👥 Ver Usuarios Registrados</button>
+                <p class="text-muted" style="font-size: 12px; margin-top: 8px;">Selecciona un usuario para trazar en el mapa los recorridos que ha realizado, con su duración y monto pagado.</p>
+                <div id="panel-usuarios-monitoreo" style="display: none; margin-top: 12px;"></div>
+                <div id="panel-ruta-usuario" style="display: none; margin-top: 12px;"></div>
             </div>
 
             <div class="card">
                 <h3 style="font-size: 16px; margin-bottom: 12px;">Estado Geofencing y Parámetros</h3>
                 <p class="text-muted" style="font-size: 13px;">Supervisión continua de geocerca, batería y estatus operativo en vivo.</p>
-            </div>
-        </section>
-
-        <!-- VISTA 4: GESTIÓN DE VIAJES -->
-        <section id="view-gestion-viajes" style="display: none;">
-            <div style="margin-bottom: 20px;">
-                <span class="text-accent" style="font-size: 12px; font-weight: 700; text-transform: uppercase;">Flujo Completo del Viaje</span>
-                <h2 style="font-size: 22px; font-weight: 800;">Desbloqueo, Cierre y Cálculo de Costos</h2>
-            </div>
-
-            <div class="card grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                <div>
-                    <h3 style="font-size: 16px; margin-bottom: 12px;">[T-05-03] Iniciar Viaje / Desbloqueo</h3>
-                    <form id="form-iniciar-viaje" onsubmit="event.preventDefault(); iniciarViajeJS();" style="display: flex; flex-direction: column; gap: 10px;">
-                        <input type="number" id="id_usuario" placeholder="ID Usuario" required style="padding: 8px; border-radius: 6px; border: 1px solid var(--card-border);">
-                        <input type="number" id="id_bicicleta" placeholder="ID Bicicleta" required style="padding: 8px; border-radius: 6px; border: 1px solid var(--card-border);">
-                        <input type="number" id="estacion_origen" placeholder="ID Estación Origen" required style="padding: 8px; border-radius: 6px; border: 1px solid var(--card-border);">
-                        <button type="submit" class="tab-btn active" style="cursor: pointer; padding: 10px;">Iniciar Viaje (Bicicleta -> Alquilada)</button>
-                    </form>
-                </div>
-
-                <div>
-                    <h3 style="font-size: 16px; margin-bottom: 12px;">[T-05-05, T-05-07] Cierre de Viaje</h3>
-                    <form id="form-cerrar-viaje" onsubmit="event.preventDefault(); cerrarViajeJS();" style="display: flex; flex-direction: column; gap: 10px;">
-                        <input type="number" id="id_alquiler" placeholder="ID Alquiler" required style="padding: 8px; border-radius: 6px; border: 1px solid var(--card-border);">
-                        <input type="number" id="estacion_destino" placeholder="ID Estación Destino (Validación al Cierre)" required style="padding: 8px; border-radius: 6px; border: 1px solid var(--card-border);">
-                        <button type="submit" class="tab-btn" style="cursor: pointer; padding: 10px; background: #3b82f6; color: #fff;">Finalizar Viaje y Calcular Costo</button>
-                    </form>
-                </div>
             </div>
         </section>
 
@@ -224,7 +227,7 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
             <!-- Formulario de Registro de Pagos / Carga de Evidencia -->
             <div class="card" style="margin-bottom: 20px;">
                 <h3 style="font-size: 16px; margin-bottom: 12px;">Registrar Transacción y Cargar Comprobante</h3>
-                <form id="form-procesar-pago" onsubmit="event.preventDefault(); registrarPagoJS();" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: end;">
+                <form id="form-procesar-pago" onsubmit="event.preventDefault(); registrarPagoJS();" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end;">
                     <div>
                         <label style="font-size: 12px; font-weight: 600;" class="text-muted">ID Alquiler</label>
                         <input type="number" id="pago_alquiler_id" required placeholder="Ej: 1" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--card-border);">
@@ -234,22 +237,31 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
                         <input type="number" step="0.01" id="pago_monto" required placeholder="0.00" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--card-border);">
                     </div>
                     <div>
+                        <label style="font-size: 12px; font-weight: 600;" class="text-muted">Método de Pago</label>
+                        <select id="pago_metodo" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--card-border); background: var(--bg-60); color: var(--text-30);">
+                            <option value="TARJETA">💳 Tarjeta (tokenizada)</option>
+                            <option value="TRANSFERENCIA">🏦 Transferencia (comprobante)</option>
+                            <option value="QR">📱 QR / Nequi</option>
+                        </select>
+                    </div>
+                    <div>
                         <label style="font-size: 12px; font-weight: 600;" class="text-muted">Comprobante / Evidencia</label>
                         <input type="file" id="pago_evidencia" accept="image/*,application/pdf" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--card-border);">
                     </div>
                     <div>
-                        <button type="submit" class="tab-btn active" style="width: 100%; padding: 9px; cursor: pointer;">
-                            Procesar Pago
+                        <button type="submit" class="btn-primary" style="width: 100%;">
+                            💳 Procesar Pago
                         </button>
                     </div>
                 </form>
+                <p class="text-muted" style="font-size: 12px; margin-top: 8px;">💡 Pago con tarjeta tokenizada se aprueba al instante. Transferencia y QR quedan <b>Pendientes</b> hasta que los compruebes y apruebes aquí.</p>
             </div>
 
             <!-- Tabla de Transacciones Procesadas Base de Datos -->
             <div class="card" style="margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <h3 style="font-size: 16px; margin: 0;">Transacciones Registradas en BD</h3>
-                    <button onclick="cargarTransaccionesJS()" class="tab-btn" style="padding: 4px 12px; font-size: 12px; cursor: pointer;">🔄 Actualizar Tabla</button>
+                    <button onclick="actualizarTablaTransaccionesJS()" class="btn-secondary">🔄 Actualizar Tabla</button>
                 </div>
                 <table>
                     <thead>
@@ -257,9 +269,11 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
                             <th>ID Tx</th>
                             <th>ID Alquiler</th>
                             <th>Referencia Externa</th>
+                            <th>Método</th>
                             <th>Monto</th>
                             <th>Estado</th>
                             <th>Fecha</th>
+                            <th>Acción</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-transacciones-base">
@@ -308,7 +322,18 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
         </section>
     </main>
 
-    <script src="js/app.js"></script>
+    <script src="assets/sweetalert2/sweetalert2.all.min.js"></script>
+    <script>
+        // Respaldo: si el bundle no expone el global Swal, lo inyecta evaluándolo en el contexto global.
+        if (typeof Swal === 'undefined') {
+            fetch('assets/sweetalert2/sweetalert2.all.min.js')
+                .then(r => r.text())
+                .then(t => { new Function(t)(); if (typeof Swal === 'undefined') console.error('SweetAlert2 no cargó correctamente.'); })
+                .catch(() => console.error('No se pudo cargar SweetAlert2.'));
+        }
+    </script>
+    <script src="js/app.js?v=<?= filemtime('js/app.js') ?>"></script>
+    <script src="js/trip_monitor.js?v=<?= filemtime('js/trip_monitor.js') ?>"></script>
     <script>
         // Función para cambiar pestañas y cargar transacciones automáticamente al entrar a Métodos de Pago
         function switchTab(viewId) {
@@ -328,6 +353,27 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
             // Si entra a métodos de pago, cargar la lista actualizada de la BD
             if (viewId === 'view-metodos-pago' && typeof cargarTransaccionesJS === 'function') {
                 cargarTransaccionesJS();
+            }
+
+            // Si entra a auditoría, cargar la conciliación financiera real desde la BD
+            if (viewId === 'view-auditoria' && typeof cargarConciliacionJS === 'function') {
+                cargarConciliacionJS();
+            }
+
+            // Si entra a monitoreo, iniciar telemetría real de la bicicleta 1
+            if (viewId === 'view-monitoreo' && typeof iniciarMonitoreo === 'function') {
+                iniciarMonitoreo(1);
+            }
+
+            // El mapa de estaciones vive ahora en Monitoreo; al mostrarlo hay que recalcular su tamaño
+            if (viewId === 'view-monitoreo') {
+                setTimeout(() => {
+                    if (typeof map !== 'undefined' && map !== null) {
+                        map.invalidateSize();
+                    } else if (typeof initMap === 'function') {
+                        initMap();
+                    }
+                }, 150);
             }
         }
     </script>

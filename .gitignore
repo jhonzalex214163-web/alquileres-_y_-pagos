@@ -1,0 +1,9 @@
+# Archivos de comprobantes subidos por usuarios (evidencias de pago)
+uploads/comprobantes/*
+!uploads/comprobantes/.htaccess
+
+# Backups de la base de datos con datos reales
+database/backups/*.sql
+
+# Entorno local
+.env

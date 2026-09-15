@@ -328,22 +328,22 @@ class SecurityTest {
             $this->fail("DashboardController no usa requireLogin()");
         }
 
-        // T-6.2: index2.php verifica rol admin
+        // T-6.2: index2.php verifica rol admin (sesión unificada `usuario_rol` en minúsculas)
         $index2Code = $this->readCode('index2.php');
 
-        if (strpos($index2Code, "usuario_rol'] !== 'admin'") !== false) {
-            $this->pass("index2.php verifica rol admin antes de cargar panel");
+        if (strpos($index2Code, "AuthController::isAuthenticated()") !== false && strpos($index2Code, "'admin'") !== false) {
+            $this->pass("index2.php verifica sesión activa y rol admin antes de cargar panel");
         } else {
             $this->fail("index2.php no verifica rol admin");
         }
 
-        // T-6.3: usuario.php verifica rol user
+        // T-6.3: usuario.php verifica rol cliente (CLI -> minúsculas 'cli')
         $usuarioCode = $this->readCode('usuario.php');
 
-        if (strpos($usuarioCode, "usuario_rol'] !== 'user'") !== false) {
-            $this->pass("usuario.php verifica rol user antes de cargar portal");
+        if (strpos($usuarioCode, "AuthController::isAuthenticated()") !== false && strpos($usuarioCode, "'cli'") !== false) {
+            $this->pass("usuario.php verifica rol cliente (cli) antes de cargar portal");
         } else {
-            $this->fail("usuario.php no verifica rol user");
+            $this->fail("usuario.php no verifica rol cliente");
         }
 
         // T-6.4: AuthController tiene isAuthenticated() y requireLogin()

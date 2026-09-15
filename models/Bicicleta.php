@@ -6,8 +6,8 @@ class Bicicleta {
     private $conn;
 
     public function __construct() {
-        $database = new Database();
-        $this->conn = $database->getConnection();
+        // Conexión singleton (sin instanciar Database)
+        $this->conn = Database::getConnection();
     }
 
     // [T-05-04] Actualizar estado de bicicleta

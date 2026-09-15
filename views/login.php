@@ -1,40 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . '/../config/config.php';
 
-$error = '';
-
-// Al enviar el formulario con action=login
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'login') {
-    $email = trim($_POST['email'] ?? '');
-    $password = trim($_POST['password'] ?? '');
-
-    if (!empty($email) && !empty($password)) {
-        // Mapeo básico de credenciales de prueba y asignación de roles
-        $usuarios = [
-            'admin@bicijardin.com' => ['nombre' => 'Administrador', 'rol' => 'admin', 'pass' => 'password123'],
-            'user@bicijardin.com'  => ['nombre' => 'Ciclista Usuario', 'rol' => 'user', 'pass' => 'password123']
-        ];
-
-        if (isset($usuarios[$email]) && $usuarios[$email]['pass'] === $password) {
-            $_SESSION['usuario_email'] = $email;
-            $_SESSION['usuario_nombre'] = $usuarios[$email]['nombre'];
-            $_SESSION['usuario_rol'] = $usuarios[$email]['rol'];
-
-            // Redirección restringida por rol
-            if ($_SESSION['usuario_rol'] === 'admin') {
-                header('Location: ../index2.php');
-                exit;
-            } else {
-                header('Location: ../usuario.php');
-                exit;
-            }
-        } else {
-            $error = 'Credenciales incorrectas.';
-        }
-    } else {
-        $error = 'Por favor ingresa tu correo y contraseña.';
-    }
-}
+$error = $error ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -124,12 +91,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                 </div>
             <?php endif; ?>
 
-            <form method="POST" action="login.php?action=login" style="display: flex; flex-direction: column; gap: 16px;">
+            <form method="POST" action="<?php echo BASE_URL; ?>index.php?action=login" style="display: flex; flex-direction: column; gap: 16px;">
+                <?php echo csrf_field(); ?>
                 <div>
                     <label style="display: block; font-size: 11px; font-weight: 700; color: var(--muted-30); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
                         Correo Electrónico
                     </label>
-                    <input type="email" name="email" required placeholder="admin@bicijardin.com" class="input-field">
+                    <input type="email" name="email" required placeholder="tucorreo@bicijardin.com" class="input-field">
                 </div>
                 <div>
                     <label style="display: block; font-size: 11px; font-weight: 700; color: var(--muted-30); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -141,13 +109,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                     Iniciar Sesión
                 </button>
             </form>
-
-            <div style="margin-top: 20px; text-align: center; border-top: 1px solid var(--card-border); padding-top: 16px;">
-                <p style="font-size: 12px; color: var(--muted-30); margin: 0;">
-                    Credenciales de prueba:<br>
-                    <span style="color: var(--accent-glow);">admin@bicijardin.com / user@bicijardin.com</span>
-                </p>
-            </div>
         </div>
     </div>
 </body>

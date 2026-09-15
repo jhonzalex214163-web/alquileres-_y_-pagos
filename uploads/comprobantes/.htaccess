@@ -1,0 +1,7 @@
+# Bloquear ejecución de scripts en el directorio de comprobantes
+<FilesMatch "\.(?i:php|php3|php4|php5|php7|phtml|phar|cgi|pl|py|sh|asp|aspx|jsp)$">
+    Require all denied
+</FilesMatch>
+
+# Negar listado de directorios
+Options -Indexes

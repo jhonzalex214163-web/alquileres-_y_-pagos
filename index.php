@@ -8,18 +8,27 @@ $action = $_GET['action'] ?? 'dashboard';
 switch ($action) {
     case 'login':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $email = $_POST['email'] ?? '';
-            $password = $_POST['password'] ?? '';
-            $error = null;
+            $error = 'La solicitud no es válida. Vuelve a intentarlo.';
 
-            $user = AuthController::login($email, $password);
-            if ($user !== null) {
-                header('Location: ' . BASE_URL);
-                exit;
-            } else {
-                $error = 'Credenciales incorrectas. Inténtalo de nuevo.';
-                require __DIR__ . '/views/login.php';
+            if (csrf_verify($_POST['csrf_token'] ?? null)) {
+                $email = trim($_POST['email'] ?? '');
+                $password = $_POST['password'] ?? '';
+
+                $user = AuthController::login($email, $password);
+                if ($user !== null) {
+                    // Redirigir por rol: admin al panel, resto al portal de usuario
+                    if (AuthController::esAdmin()) {
+                        header('Location: ' . BASE_URL . 'index2.php');
+                    } else {
+                        header('Location: ' . BASE_URL . 'usuario.php');
+                    }
+                    exit;
+                } else {
+                    $error = 'Credenciales incorrectas. Inténtalo de nuevo.';
+                }
             }
+
+            require __DIR__ . '/views/login.php';
         } else {
             if (AuthController::isAuthenticated()) {
                 header('Location: ' . BASE_URL);

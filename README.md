@@ -39,14 +39,22 @@ bicicletas-compartidas/
 ├── database/
 │   ├── script.sql                       # Schema completo de la base de datos
 │   └── migrations/                      # Migraciones incrementales
-│       ├── 000_add_password_to_usuarios.sql
+│       ├── 000_add_password_to_usuarios.sql   # ⚠️ OBSOLETA: no ejecutar (B9)
 │       ├── 001_create_alquileres_table.sql
 │       ├── 002_create_metodos_pago_table.sql
-│       └── 003_fidelizacion_mensual.sql
+│       ├── 003_fidelizacion_mensual.sql
+│       ├── 004_auth_usuarios.sql             # password + usuarios de prueba (segura)
+│       ├── 005_alquileres_estado.sql
+│       ├── 006_transacciones_pago.sql
+│       └── 007_bicicletas_estado.sql
 ├── docs/
 │   └── API_ALQUILERES.md                # Documentación de APIs y flujo de viaje
 ├── tests/
-│   └── AlquilerTest.php                 # Pruebas del flujo de alquiler
+│   ├── AlquilerTest.php                 # Pruebas del flujo de alquiler
+│   ├── SmokeTest.php                    # Smoke tests dinámicos (login/alquiler/pago)
+│   └── SecurityTest.php                 # Pruebas estáticas de 8 capas de seguridad
+├── uploads/
+│   └── comprobantes/                    # Comprobantes de pago (con .htaccess de bloqueo)
 ├── img/
 │   └── logo.png                         # Logo BiciJardín
 └── .vscode/
@@ -144,7 +152,7 @@ Placeholder vacío para futuro desarrollo de métodos de pago.
 ### Vistas
 
 #### `views/login.php`
-Formulario de acceso con estilizado integrado (tema oscuro). Campos: `email` (type="email") y `password` (type="password"). Envía POST a `login.php?action=login`. Muestra credenciales de prueba al pie: `admin@bicijardin.com / password123` y `user@bicijardin.com / password123`.
+Formulario de acceso con estilizado integrado (tema oscuro). Campos: `email` (type="email") y `password` (type="password"). Envía POST a `index.php?action=login` (ruta absoluta con `BASE_URL`). La vista ya no contiene credenciales hardcodeadas: el cierre de credenciales se delega a `AuthController::login()` (único punto de autenticación, `password_verify`, `session_regenerate_id`, CSRF). Tras el login, el router redirige por rol: **admin → `index2.php`**, resto → `usuario.php`.
 
 #### `views/dashboard.php`
 Dashboard principal con arquitectura SPA. Incluye:
@@ -226,19 +234,40 @@ Configuración del editor VS Code para el proyecto.
 
 ## Cómo Probar
 
+> Usa el binario de PHP de Laragon: `C:\laragon\bin\php\php-8.3.33-Win32-vs16-x64\php.exe`
+
 ```bash
 # 1. Iniciar Apache + MySQL en Laragon
 # 2. Crear base de datos y cargar el esquema
 mysql -u root -e "CREATE DATABASE bicicletas_compartidas"
 mysql -u root bicicletas_compartidas < database/script.sql
-# 3. Ejecutar migración para crear password column y roles
-mysql -u root bicicletas_compartidas < database/migrations/000_add_password_to_usuarios.sql
-# 4. Sembrar usuarios de prueba
-mysql -u root bicicletas_compartidas < database/migrations/000_add_password_to_usuarios.sql
-# 5. Abrir en navegador: http://localhost/bicicletas-compartidas/index.php
-#    Credenciales:
-#      Admin: admin@bicijardin.com / password123
-#      User:  user@bicijardin.com  / password123
+# 3. Aplicar migraciones 004-007 (autenticación + estado alquileres + pagos + estados bici)
+mysql -u root --default-character-set=utf8mb4 bicicletas_compartidas < database/migrations/004_auth_usuarios.sql
+mysql -u root --default-character-set=utf8mb4 bicicletas_compartidas < database/migrations/005_alquileres_estado.sql
+mysql -u root --default-character-set=utf8mb4 bicicletas_compartidas < database/migrations/006_transacciones_pago.sql
+mysql -u root --default-character-set=utf8mb4 bicicletas_compartidas < database/migrations/007_bicicletas_estado.sql
+# 3b. (opcional, idempotente) vistas de fidelización/conciliación
+mysql -u root bicicletas_compartidas < database/migrations/003_fidelizacion_mensual.sql
+
+# 4. Abrir en navegador: http://localhost/bicicletas-compartidas/?action=login
+#    Credenciales de prueba (SOLO desarrollo, hasheadas con BCRYPT en BD):
+#      Admin: admin@bicijardin.com / password123   -> redirige a index2.php
+#      User:  user@bicijardin.com  / password123   -> redirige a usuario.php
+```
+> ⚠️ **Nunca** ejecutes `database/migrations/000_add_password_to_usuarios.sql` ni la migración
+> `credenciales_prueba.php` con ids fijos sobre una BD viva: sobrescriben usuarios y roles reales (B9).
+
+## Tests
+
+```bash
+# Análisis estático (8 capas de seguridad)
+C:\laragon\bin\php\php-8.3.33-Win32-vs16-x64\php.exe tests\SecurityTest.php
+
+# Pruebas dinámicas (login real, flujo de alquiler y pago; limpia sus registros)
+C:\laragon\bin\php\php-8.3.33-Win32-vs16-x64\php.exe tests\SmokeTest.php
+
+# Flujo de alquiler de bicicletas sobre la BD
+C:\laragon\bin\php\php-8.3.33-Win32-vs16-x64\php.exe tests\AlquilerTest.php
 ```
 
 ## Rutas Principales
@@ -253,6 +282,9 @@ mysql -u root bicicletas_compartidas < database/migrations/000_add_password_to_u
 | `credenciales_prueba.php` | Siembra usuarios de prueba |
 
 ## APIs
+
+> Todas requieren sesión iniciada. Las acciones que mutan datos (POST) validan además un token
+> CSRF (cabecera `X-CSRF-Token` o parámetro `csrf_token` en formularios).
 
 | Endpoint | Acción | Descripción |
 |---|---|---|
